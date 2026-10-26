@@ -201,7 +201,7 @@
             const linha = document.createElement('tr')
             const celula = document.createElement('td')
 
-            celula.colSpan = 3
+            celula.colSpan = 4
             celula.textContent = 'Nenhum evento recebido ainda.'
 
             linha.append(celula)
@@ -209,6 +209,8 @@
           }
 
           for (const evento of [...eventos].reverse()) {
+            const linha = document.createElement('tr')
+
             const identificador = document.createElement('td')
             identificador.textContent = evento.lab_id ?? '-'
 
