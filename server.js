@@ -77,6 +77,7 @@ app.post('/api/heartbeat', exigirToken('LAB_API_TOKEN'), (req, res) => {
     lab_id,
     version,
     received_at: new Date().toISOString(),
+    nome: nome,
   }
 
   events.push(event)
@@ -85,7 +86,6 @@ app.post('/api/heartbeat', exigirToken('LAB_API_TOKEN'), (req, res) => {
   res.status(200).json({
     status: 'ok',
     message: 'Evento de laboratório recebido',
-    nome: nome,
   })
 })
 
