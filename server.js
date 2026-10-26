@@ -58,7 +58,7 @@ app.get('/', (req, res) => {
 })
 
 app.post('/api/heartbeat', exigirToken('LAB_API_TOKEN'), (req, res) => {
-  const { lab_id, version } = req.body ?? {}
+  const { lab_id, version, nome } = req.body ?? {}
 
   if (
     typeof lab_id !== 'string' ||
@@ -85,6 +85,7 @@ app.post('/api/heartbeat', exigirToken('LAB_API_TOKEN'), (req, res) => {
   res.status(200).json({
     status: 'ok',
     message: 'Evento de laboratório recebido',
+    nome: nome,
   })
 })
 

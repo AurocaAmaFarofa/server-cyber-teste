@@ -210,6 +210,9 @@
           for (const evento of [...eventos].reverse()) {
             const linha = document.createElement('tr')
 
+            const nome = document.createElement('td')
+            nome.textContent = evento.nome
+
             const identificador = document.createElement('td')
             identificador.textContent = evento.lab_id
 
