@@ -1,11 +1,14 @@
 const express = require('express')
 const rateLimit = require('express-rate-limit')
 const crypto = require('node:crypto')
+const path = require('node:path')
 
 const app = express()
 app.use(express.json({ limit: '2kb' }))
 
 const events = []
+
+app.use(express.static(path.join(__dirname, 'public')))
 
 app.set('trust proxy', 1)
 

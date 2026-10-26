@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cyber Lab | Monitoramento</title>
+
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        padding: 32px 16px;
+        background: #0b1020;
+        color: #e5e7eb;
+        font-family: Arial, sans-serif;
+      }
+
+      main {
+        max-width: 1000px;
+        margin: auto;
+      }
+
+      h1 {
+        margin-bottom: 8px;
+      }
+
+      .subtitulo {
+        color: #94a3b8;
+        margin-bottom: 28px;
+      }
+
+      .card {
+        background: #151c30;
+        border: 1px solid #28334c;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 20px;
+      }
+
+      .controles {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      input,
+      button {
+        padding: 12px;
+        border-radius: 8px;
+        font-size: 14px;
+      }
+
+      input {
+        flex: 1;
+        min-width: 200px;
+        background: #0b1020;
+        color: white;
+        border: 1px solid #38445e;
+      }
+
+      button {
+        border: none;
+        background: #6366f1;
+        color: white;
+        cursor: pointer;
+      }
+
+      button:hover {
+        background: #4f46e5;
+      }
+
+      #sair {
+        background: #374151;
+      }
+
+      #status {
+        color: #a5b4fc;
+        margin-top: 14px;
+      }
+
+      .tabela-container {
+        overflow-x: auto;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        text-align: left;
+      }
+
+      th,
+      td {
+        padding: 14px 10px;
+        border-bottom: 1px solid #28334c;
+        white-space: nowrap;
+      }
+
+      th {
+        color: #94a3b8;
+        font-size: 12px;
+        text-transform: uppercase;
+      }
+
+      .contador {
+        font-size: 28px;
+        font-weight: bold;
+        margin-top: 8px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <main>
+      <h1>Cyber Lab</h1>
+      <p class="subtitulo">Painel de monitoramento do laboratório</p>
+
+      <section class="card">
+        <h2>Acesso administrativo</h2>
+
+        <form id="form-token" class="controles">
+          <input
+            id="token"
+            type="password"
+            placeholder="Token administrativo"
+            autocomplete="off"
+            required
+          />
+
+          <button type="submit">Conectar</button>
+          <button type="button" id="sair">Desconectar</button>
+        </form>
+
+        <p id="status" role="status">
+          Informe seu token para consultar os eventos.
+        </p>
+      </section>
+
+      <section class="card">
+        <h2>Eventos recebidos</h2>
+        <div class="contador" id="contador">—</div>
+        <p class="subtitulo">Total de eventos em memória</p>
+
+        <div class="tabela-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Identificador</th>
+                <th>Versão</th>
+                <th>Data e hora</th>
+              </tr>
+            </thead>
+
+            <tbody id="eventos">
+              <tr>
+                <td colspan="3">Conecte-se para consultar os eventos.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const formulario = document.querySelector('#form-token')
+      const campoToken = document.querySelector('#token')
+      const status = document.querySelector('#status')
+      const tabela = document.querySelector('#eventos')
+      const contador = document.querySelector('#contador')
+      const botaoSair = document.querySelector('#sair')
+
+      let tokenAdmin = ''
+      let intervalo = null
+
+      async function carregarEventos() {
+        try {
+          const resposta = await fetch('/api/events', {
+            headers: {
+              Authorization: `Bearer ${tokenAdmin}`,
+            },
+            cache: 'no-store',
+          })
+
+          if (!resposta.ok) {
+            if (resposta.status === 401) {
+              throw new Error('Token inválido ou não autorizado.')
+            }
+
+            throw new Error(`Falha na consulta: HTTP ${resposta.status}`)
+          }
+
+          const eventos = await resposta.json()
+
+          tabela.replaceChildren()
+          contador.textContent = eventos.length
+
+          if (eventos.length === 0) {
+            const linha = document.createElement('tr')
+            const celula = document.createElement('td')
+
+            celula.colSpan = 3
+            celula.textContent = 'Nenhum evento recebido ainda.'
+
+            linha.append(celula)
+            tabela.append(linha)
+          }
+
+          for (const evento of [...eventos].reverse()) {
+            const linha = document.createElement('tr')
+
+            const identificador = document.createElement('td')
+            identificador.textContent = evento.lab_id
+
+            const versao = document.createElement('td')
+            versao.textContent = evento.version
+
+            const horario = document.createElement('td')
+            const data = new Date(evento.received_at)
+
+            horario.textContent = Number.isNaN(data.getTime())
+              ? 'Data indisponível'
+              : data.toLocaleString('pt-BR')
+
+            linha.append(identificador, versao, horario)
+            tabela.append(linha)
+          }
+
+          status.textContent =
+            'Conectado. Atualização automática a cada 10 segundos.'
+        } catch (erro) {
+          status.textContent = erro.message
+
+          if (erro.message.includes('Token inválido')) {
+            desconectar()
+          }
+        }
+      }
+
+      formulario.addEventListener('submit', async (evento) => {
+        evento.preventDefault()
+
+        tokenAdmin = campoToken.value.trim()
+
+        if (!tokenAdmin) return
+
+        await carregarEventos()
+
+        if (tokenAdmin && !intervalo) {
+          intervalo = setInterval(carregarEventos, 10000)
+        }
+      })
+
+      function desconectar() {
+        tokenAdmin = ''
+        campoToken.value = ''
+
+        if (intervalo) {
+          clearInterval(intervalo)
+          intervalo = null
+        }
+
+        contador.textContent = '—'
+        tabela.replaceChildren()
+
+        const linha = document.createElement('tr')
+        const celula = document.createElement('td')
+
+        celula.colSpan = 3
+        celula.textContent = 'Conecte-se para consultar os eventos.'
+
+        linha.append(celula)
+        tabela.append(linha)
+
+        status.textContent = 'Desconectado.'
+      }
+
+      botaoSair.addEventListener('click', desconectar)
+    </script>
+  </body>
+</html>
