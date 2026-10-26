@@ -148,6 +148,7 @@
             <thead>
               <tr>
                 <th>Identificador</th>
+                <th>Nome</th>
                 <th>Versão</th>
                 <th>Data e hora</th>
               </tr>
@@ -208,25 +209,21 @@
           }
 
           for (const evento of [...eventos].reverse()) {
-            const linha = document.createElement('tr')
-
-            const nome = document.createElement('td')
-            nome.textContent = evento.nome
-
             const identificador = document.createElement('td')
-            identificador.textContent = evento.lab_id
+            identificador.textContent = evento.lab_id ?? '-'
+
+            const nomee = document.createElement('td')
+            nomee.textContent = evento.nome ?? '-'
 
             const versao = document.createElement('td')
-            versao.textContent = evento.version
+            versao.textContent = evento.version ?? '-'
 
             const horario = document.createElement('td')
-            const data = new Date(evento.received_at)
+            horario.textContent = evento.received_at
+              ? new Date(evento.received_at).toLocaleString('pt-BR')
+              : '-'
 
-            horario.textContent = Number.isNaN(data.getTime())
-              ? 'Data indisponível'
-              : data.toLocaleString('pt-BR')
-
-            linha.append(identificador, versao, horario)
+            linha.append(identificador, nomee, versao, horario)
             tabela.append(linha)
           }
 
@@ -270,7 +267,7 @@
         const linha = document.createElement('tr')
         const celula = document.createElement('td')
 
-        celula.colSpan = 3
+        celula.colSpan = 4
         celula.textContent = 'Conecte-se para consultar os eventos.'
 
         linha.append(celula)
