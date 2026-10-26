@@ -1,9 +1,51 @@
 const express = require('express')
+const rateLimit = require('express-rate-limit')
+const crypto = require('node:crypto')
 
 const app = express()
 app.use(express.json({ limit: '2kb' }))
 
 const events = []
+
+app.set('trust proxy', 1)
+
+app.use(
+  rateLimit({
+    windowMs: 60 * 1000,
+    limit: 30,
+    standardHeaders: true,
+    legacyHeaders: false,
+  }),
+)
+
+function tokenValido(tokenRecebido, tokenEsperado) {
+  if (!tokenEsperado || !tokenRecebido) {
+    return false
+  }
+
+  const recebido = Buffer.from(tokenRecebido)
+  const esperado = Buffer.from(tokenEsperado)
+
+  return (
+    recebido.length === esperado.length &&
+    crypto.timingSafeEqual(recebido, esperado)
+  )
+}
+
+function exigirToken(nomeVariavel) {
+  return (req, res, next) => {
+    const authorization = req.get('authorization') || ''
+    const token = authorization.match(/^Bearer\s+(.+)$/i)?.[1]
+
+    if (!tokenValido(token, process.env[nomeVariavel])) {
+      return res.status(401).json({
+        error: 'Não autorizado',
+      })
+    }
+
+    next()
+  }
+}
 
 app.get('/', (req, res) => {
   res.json({
@@ -12,7 +54,7 @@ app.get('/', (req, res) => {
   })
 })
 
-app.post('/api/heartbeat', (req, res) => {
+app.post('/api/heartbeat', exigirToken('LAB_API_TOKEN'), (req, res) => {
   const { lab_id, version } = req.body ?? {}
 
   if (
@@ -20,6 +62,7 @@ app.post('/api/heartbeat', (req, res) => {
     lab_id.length < 1 ||
     lab_id.length > 64 ||
     typeof version !== 'string' ||
+    version.length < 1 ||
     version.length > 32
   ) {
     return res.status(400).json({
@@ -34,8 +77,7 @@ app.post('/api/heartbeat', (req, res) => {
   }
 
   events.push(event)
-
-  console.log('Evento recebido:', event)
+  console.log('Evento de laboratório recebido:', event)
 
   res.status(200).json({
     status: 'ok',
@@ -43,7 +85,7 @@ app.post('/api/heartbeat', (req, res) => {
   })
 })
 
-app.get('/api/events', (req, res) => {
+app.get('/api/events', exigirToken('ADMIN_API_TOKEN'), (req, res) => {
   res.json(events)
 })
 
